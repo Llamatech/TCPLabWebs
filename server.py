@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 
 import os
-import sys
 import socketserver
 
 
@@ -16,7 +15,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
         # if ack == b'OK':
         with open('main.js', 'rb') as fp:
             size = os.fstat(fp.fileno()).st_size
-            self.request.sendall(bytes(size))
+            self.request.sendall(bytes(str(size), 'utf-8'))
             buf = fp.read(1024)
             while buf:
                 self.request.sendall(buf)
@@ -25,8 +24,11 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
 if __name__ == '__main__':
     HOST, PORT = '0.0.0.0', 11000
-    with socketserver.TCPServer((HOST, PORT), TCPHandler) as server:
+    server = socketserver.TCPServer((HOST, PORT), TCPHandler)
+    try:
         # Activate the server; this will keep running until you
         # interrupt the program with Ctrl-C
         print("Running on: " + HOST)
         server.serve_forever()
+    except KeyboardInterrupt:
+        server.server_close()
