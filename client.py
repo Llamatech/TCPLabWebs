@@ -10,7 +10,7 @@ def receiveFile(socket,MSGLEN):
                 raise RuntimeError("socket connection broken")
             chunks.append(chunk)
             bytes_recd = bytes_recd + len(chunk)
-            print('chunk #'+len(chunks))
+            print('chunk #'+str(len(chunks)))
             print('Size of chunk: %f'%len(chunk))
             print('Bytes received until now: %f'%bytes_recd)
         return b''.join(chunks)
@@ -18,7 +18,7 @@ def receiveFile(socket,MSGLEN):
 
 
 if __name__=='__main__':
-    serverName = '157.253.121.125'
+    serverName = '157.253.215.33'
     serverPort = 11000
     clientSocket = socket(AF_INET, SOCK_STREAM)
     clientSocket.connect((serverName,serverPort))
@@ -29,8 +29,9 @@ if __name__=='__main__':
     print(nombre)
     clientSocket.send(b"OK")
 
-    tam=int(clientSocket.recv(1024))
+    tam=int(str(clientSocket.recv(1024),"UTF-8"))
     print(tam)
+
     clientSocket.send(b"OK")
 
     file = open(nombre, "wb")
