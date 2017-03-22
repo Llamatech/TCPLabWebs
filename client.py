@@ -349,8 +349,9 @@ def receiveFile(socket, MSGLEN):
 
 
 if __name__ == '__main__':
-    host = parser.host
-    port = parser.port
+    args = parser.parse_args()
+    host = args.host
+    port = args.port
     app = QApplication.instance()
     if app is None:
         app = QApplication(['Client'])

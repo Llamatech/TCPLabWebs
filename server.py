@@ -50,7 +50,8 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
 
 if __name__ == '__main__':
-    HOST, PORT = '0.0.0.0', parser.port
+    args = parser.parse_args()
+    HOST, PORT = '0.0.0.0', args.port
     server = socketserver.TCPServer((HOST, PORT), TCPHandler)
     try:
         # Activate the server; this will keep running until you
