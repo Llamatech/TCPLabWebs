@@ -4,12 +4,23 @@ import sys
 import math
 import socket
 import humanize
+import argparse
 import os.path as osp
 from qtpy.QtCore import QMutex, QMutexLocker, Qt, QThread, Signal, Slot
 from qtpy.QtWidgets import (QHBoxLayout, QLabel,
                             QTreeWidgetItem, QVBoxLayout, QWidget,
                             QProgressBar, QTreeWidget, QApplication,
                             QToolButton)
+
+
+parser = argparse.ArgumentParser(
+    description='Simple lightweight TCP download client')
+parser.add_argument('--port',
+                    default=10000,
+                    help="Server TCP port")
+parser.add_argument('--host',
+                    default='127.0.0.1',
+                    help="Server hostname")
 
 
 def create_toolbutton(parent, text=None, shortcut=None, icon=None, tip=None,
@@ -338,10 +349,12 @@ def receiveFile(socket, MSGLEN):
 
 
 if __name__ == '__main__':
+    host = parser.host
+    port = parser.port
     app = QApplication.instance()
     if app is None:
         app = QApplication(['Client'])
-    widget = FileDownloaderWidget(None)
+    widget = FileDownloaderWidget(None, host=host, port=port)
     widget.show()
     widget.resize(640, 480)
     widget.get_file_list()

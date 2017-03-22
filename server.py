@@ -1,8 +1,15 @@
 #! /usr/bin/env python
 
 import os
+import argparse
 import socketserver
 import os.path as osp
+
+parser = argparse.ArgumentParser(
+    description='Simple lightweight TCP file server')
+parser.add_argument('--port',
+                    default=10000,
+                    help="TCP port to be listened")
 
 
 class TCPHandler(socketserver.BaseRequestHandler):
@@ -43,7 +50,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
 
 if __name__ == '__main__':
-    HOST, PORT = '0.0.0.0', 12000
+    HOST, PORT = '0.0.0.0', parser.port
     server = socketserver.TCPServer((HOST, PORT), TCPHandler)
     try:
         # Activate the server; this will keep running until you
