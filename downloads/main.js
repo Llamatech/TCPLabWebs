@@ -1,4 +1,4 @@
-4079var term,
+var term,
     protocol,
     socketURL,
     socket,
@@ -145,4 +145,5 @@ function runFakeTerminal() {
 
   term.on('paste', function (data, ev) {
     term.write(data);
-  })
+  });
+}

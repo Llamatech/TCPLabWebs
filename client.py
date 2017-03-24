@@ -1,5 +1,7 @@
 #! /usr/bin/env python
 
+from __future__ import unicode_literals
+
 import sys
 import math
 import socket
@@ -77,7 +79,6 @@ class RecoverFilesThread(QThread):
         while info != 'END':
             with QMutexLocker(self.mutex):
                 if self.stopped:
-                    # self.sock.close()
                     return False
             print(info)
             print(info.split(','))
@@ -149,12 +150,8 @@ class FileProgressBar(QWidget):
 
     def __init__(self, parent, *args, **kwargs):
         QWidget.__init__(self, parent)
-        self.pap=parent
+        self.pap = parent
         self.status_text = QLabel(self)
-        # self.spinner = QWaitingSpinner(self, centerOnParent=False)
-        # self.spinner.setNumberOfLines(12)
-        # self.spinner.setInnerRadius(2)
-        # self.spinner.start()
         self.bar = QProgressBar(self)
         self.bar.setRange(0, 0)
         layout = QHBoxLayout()
@@ -174,10 +171,6 @@ class FileProgressBar(QWidget):
         text = self.__truncate(file)
         status_str = 'Downloading file list: {0} ({1})'.format(
             text, humanize.naturalsize(size))
-        # if not :
-        #     status_str = '  Scanning: {0}'.format(text)
-        # else:
-        #     status_str = '  Searching for files in folder: {0}'.format(text)
         self.status_text.setText(status_str)
 
     def set_bounds(self, a, b):
@@ -190,7 +183,6 @@ class FileProgressBar(QWidget):
     def reset_status(self):
         self.status_text.setText("  Download Complete!")
         self.bar.hide()
-
 
     @Slot(str, int, int, int)
     def update_progress(self, file, num_chunks, bytes_recv, total_bytes):
@@ -284,8 +276,6 @@ class FileDownloaderWidget(QWidget):
         self.download_buttons.stop_sig.connect(self.stop_and_reset_thread)
         self.files.file_selected_sig.connect(self.set_selected_file)
 
-        # self.get_file_list()
-
     def get_file_list(self):
         self.stop_and_reset_thread()
         self.thread = RecoverFilesThread(self)
@@ -298,7 +288,6 @@ class FileDownloaderWidget(QWidget):
         self.download_buttons.stop.setEnabled(True)
         self.download_buttons.start.setEnabled(False)
         self.progress_bar.show()
-
 
     def set_selected_file(self, file, size):
         self.selected_file = file
@@ -314,13 +303,13 @@ class FileDownloaderWidget(QWidget):
                                    self.selected_file, self.size)
             self.thread.sig_finished.connect(self.download_complete)
             self.thread.sig_current_chunk.connect(
-                lambda x, y: self.progress_bar.update_progress(self.selected_file, x,
-                                                      y, self.size))
+                lambda x, y:
+                self.progress_bar.update_progress(self.selected_file, x,
+                                                  y, self.size))
             self.progress_bar.reset_files()
             self.thread.start()
             self.download_buttons.stop.setEnabled(True)
             self.download_buttons.start.setEnabled(False)
-
 
     def download_complete(self):
         self.progress_bar.reset_status()
@@ -336,24 +325,6 @@ class FileDownloaderWidget(QWidget):
             self.thread.setParent(None)
             self.thread = None
             self.download_complete()
-            # self.pro
-            # self.download_buttons.stop.setEnabled(False)
-            # self.download_buttons.start.setEnabled(True)
-
-
-def receiveFile(socket, MSGLEN):
-    chunks = []
-    bytes_recd = 0
-    while bytes_recd < MSGLEN:
-        chunk = socket.recv(min(MSGLEN - bytes_recd, 2048))
-        if chunk == b'':
-            raise RuntimeError("socket connection broken")
-        chunks.append(chunk)
-        bytes_recd = bytes_recd + len(chunk)
-        print('chunk #' + len(chunks))
-        print('Size of chunk: %f' % len(chunk))
-        print('Bytes received until now: %f' % bytes_recd)
-    return b''.join(chunks)
 
 
 if __name__ == '__main__':
