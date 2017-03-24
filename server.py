@@ -57,23 +57,37 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    timeout = 3
+    timeout = 10
+    daemon_threads = True
+    allow_reuse_address = True
+
+    def __init__(self, server_address, RequestHandlerClass):
+        socketserver.TCPServer.__init__(self, server_address,
+                                        RequestHandlerClass)
+
+    def handle_timeout(self):
+        print('Timeout!')
 
 
 if __name__ == '__main__':
     args = parser.parse_args()
     HOST, PORT = '0.0.0.0', int(args.port)
     server = ThreadedTCPServer((HOST, PORT), TCPHandler)
-    #server.serve_forever()
+    while True:
+        # server.serve_forever()
+        try:
+            server.handle_request()
+        except KeyboardInterrupt:
+            server.server_close()
+            break
 
-    with server:
-        ip, port = server.server_address
+    # with server:
+    #     ip, port = server.server_address
 
-        # Start a thread with the server -- that thread will then start one
-        # more thread for each request
-        server_thread = threading.Thread(target=server.serve_forever)
-        # Exit the server thread when the main thread terminates
-        server_thread.daemon = True
-        server_thread.start()
-        print("Server loop running in thread:", server_thread.name)
-
+    #     # Start a thread with the server -- that thread will then start one
+    #     # more thread for each request
+    #     server_thread = threading.Thread(target=server.serve_forever())
+    #     # Exit the server thread when the main thread terminates
+    #     server_thread.daemon = True
+    #     print("Server loop running in thread:", server_thread.name)
+    #     server_thread.start()

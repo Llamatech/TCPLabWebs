@@ -126,7 +126,6 @@ class DownloadFileThread(QThread):
 
         with open(self.file, 'wb') as fp:
             while bytes_recd < self.msglen:
-                
                 with QMutexLocker(self.mutex):
                     if self.stopped:
                         return False
