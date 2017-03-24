@@ -96,6 +96,7 @@ class DownloadFileThread(QThread):
         QThread.__init__(self, parent)
         self.mutex = QMutex()
         self.stopped = None
+        self.canceled = False
 
     def initialize(self, host, port, file, size):
         self.host = host
@@ -106,7 +107,8 @@ class DownloadFileThread(QThread):
     def run(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((self.host, self.port))
-        self.sock.send(b"DOWNLOAD %s" % (self.file))
+        s = "DOWNLOAD %s" % (self.file.split("/")[1])
+        self.sock.send(str.encode(s))
         self.download_file()
         self.stop()
         self.sig_finished.emit()
@@ -114,6 +116,7 @@ class DownloadFileThread(QThread):
     def stop(self):
         with QMutexLocker(self.mutex):
             self.stopped = True
+            self.canceled = True
             self.sock.close()
 
     def download_file(self):
@@ -123,20 +126,22 @@ class DownloadFileThread(QThread):
 
         with open(self.file, 'wb') as fp:
             while bytes_recd < self.msglen:
-                chunk = self.sock.recv(min(self.msglen - bytes_recd, 2048))
+                
                 with QMutexLocker(self.mutex):
                     if self.stopped:
                         return False
+                chunk = self.sock.recv(min(self.msglen - bytes_recd, 2048))
                 if chunk == b'':
                     raise RuntimeError("socket connection broken")
                 # chunks.append(chunk)
                 fp.write(chunk)
                 bytes_recd = bytes_recd + len(chunk)
                 num_chunks += 1
-                self.sig_current_chunk(num_chunks, bytes_recd)
-                # print('chunk #' + num_chunks)
-                # print('Size of chunk: %f' % len(chunk))
-                # print('Bytes received until now: %f' % bytes_recd)
+                self.sig_current_chunk.emit(num_chunks, bytes_recd)
+                print('chunk # %d' % num_chunks)
+                print('Size of chunk: %f' % len(chunk))
+                print('Bytes received until now: %f' % bytes_recd)
+        self.sock.send(b'OK')
 
 
 class FileProgressBar(QWidget):
@@ -145,7 +150,7 @@ class FileProgressBar(QWidget):
 
     def __init__(self, parent, *args, **kwargs):
         QWidget.__init__(self, parent)
-
+        self.pap=parent
         self.status_text = QLabel(self)
         # self.spinner = QWaitingSpinner(self, centerOnParent=False)
         # self.spinner.setNumberOfLines(12)
@@ -186,6 +191,7 @@ class FileProgressBar(QWidget):
     def reset_status(self):
         self.status_text.setText("  Download Complete!")
         self.bar.hide()
+
 
     @Slot(str, int, int, int)
     def update_progress(self, file, num_chunks, bytes_recv, total_bytes):
@@ -309,7 +315,7 @@ class FileDownloaderWidget(QWidget):
                                    self.selected_file, self.size)
             self.thread.sig_finished.connect(self.download_complete)
             self.thread.sig_current_chunk.connect(
-                lambda x, y: self.bar.update_progress(self.selected_file, x,
+                lambda x, y: self.progress_bar.update_progress(self.selected_file, x,
                                                       y, self.size))
             self.progress_bar.reset_files()
             self.thread.start()
@@ -354,7 +360,7 @@ def receiveFile(socket, MSGLEN):
 if __name__ == '__main__':
     args = parser.parse_args()
     host = args.host
-    port = args.port
+    port = int(args.port)
     app = QApplication.instance()
     if app is None:
         app = QApplication(['Client'])

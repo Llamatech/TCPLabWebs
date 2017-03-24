@@ -3,6 +3,7 @@
 import os
 import argparse
 import socketserver
+import threading
 import os.path as osp
 
 parser = argparse.ArgumentParser(
@@ -19,21 +20,27 @@ class TCPHandler(socketserver.BaseRequestHandler):
         print(req)
         if req == b'FILE_LIST':
             self.list_files()
+        elif str(req,"UTF-8").startswith("DOWNLOAD"):
+            self.send_file(str(req, "UTF-8").split(" ")[1])
 
     def send_file(self, file):
+        print(file)
         print("Sending file....")
-        self.request.sendall(bytes("main.js", 'utf-8'))
-        ack = self.request.recv(2048)
-        assert ack == b'OK'
-        print(ack)
+        #self.request.sendall(bytes("main.js", 'utf-8'))
+        # ack = self.request.recv(2048)
+        # assert ack == b'OK'
+        # print(ack)
         # if ack == b'OK':
-        with open('main.js', 'rb') as fp:
-            size = os.fstat(fp.fileno()).st_size
-            self.request.sendall(bytes(str(size), 'utf-8'))
+        with open('files/%s'%file, 'rb') as fp:
+            #size = os.fstat(fp.fileno()).st_size
+            #self.request.sendall(bytes(str(size), 'utf-8'))
             buf = fp.read(1024)
             while buf:
                 self.request.sendall(buf)
                 buf = fp.read(1024)
+        ack = self.request.recv(2048)
+        assert ack == b'OK'
+        print("file sent successful")
 
     def list_files(self):
         print("Listing files...")
@@ -49,14 +56,24 @@ class TCPHandler(socketserver.BaseRequestHandler):
         self.request.sendall(b'END')
 
 
+class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    timeout = 3
+
+
 if __name__ == '__main__':
     args = parser.parse_args()
-    HOST, PORT = '0.0.0.0', args.port
-    server = socketserver.TCPServer((HOST, PORT), TCPHandler)
-    try:
-        # Activate the server; this will keep running until you
-        # interrupt the program with Ctrl-C
-        print("Running on: " + HOST)
-        server.serve_forever()
-    except KeyboardInterrupt:
-        server.server_close()
+    HOST, PORT = '0.0.0.0', int(args.port)
+    server = ThreadedTCPServer((HOST, PORT), TCPHandler)
+    #server.serve_forever()
+
+    with server:
+        ip, port = server.server_address
+
+        # Start a thread with the server -- that thread will then start one
+        # more thread for each request
+        server_thread = threading.Thread(target=server.serve_forever)
+        # Exit the server thread when the main thread terminates
+        server_thread.daemon = True
+        server_thread.start()
+        print("Server loop running in thread:", server_thread.name)
+
