@@ -154,9 +154,9 @@ class FileProgressBar(QWidget):
         self.status_text = QLabel(self)
         self.bar = QProgressBar(self)
         self.bar.setRange(0, 0)
-        layout = QHBoxLayout()
-        layout.addWidget(self.bar)
+        layout = QVBoxLayout()
         layout.addWidget(self.status_text)
+        layout.addWidget(self.bar)
         self.setLayout(layout)
 
     def __truncate(self, text):
@@ -188,7 +188,8 @@ class FileProgressBar(QWidget):
     def update_progress(self, file, num_chunks, bytes_recv, total_bytes):
         text = "  Downloading {0} - {1}/{2} (Chunk {3})"
         self.status_text.setText(text.format(
-            file, bytes_recv, total_bytes, num_chunks))
+            file, humanize.naturalsize(bytes_recv),
+            humanize.naturalsize(total_bytes), num_chunks))
         self.bar.setValue(bytes_recv)
 
 
@@ -335,7 +336,7 @@ if __name__ == '__main__':
     if app is None:
         app = QApplication(['Client'])
     widget = FileDownloaderWidget(None, host=host, port=port)
-    widget.show()
     widget.resize(640, 480)
+    widget.show()
     widget.get_file_list()
     sys.exit(app.exec_())
