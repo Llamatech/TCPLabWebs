@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 import os
 import argparse
@@ -13,7 +13,7 @@ parser.add_argument('--port',
 
 
 class TCPHandler(socketserver.StreamRequestHandler):
-    timeout = 5
+    timeout = 2
 
     def handle(self):
         req = self.request.recv(2048)
@@ -26,8 +26,9 @@ class TCPHandler(socketserver.StreamRequestHandler):
     def send_file(self, file):
         print(file)
         print("Sending file....")
+        chunk = int(1024 * 1)
         with open('files/%s' % file, 'rb') as fp:
-            buf = fp.read(1024)
+            buf = fp.read(chunk)
             while buf:
                 self.request.sendall(buf)
                 buf = fp.read(1024)

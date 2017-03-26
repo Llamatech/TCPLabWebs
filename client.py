@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 
 import sys
+import time
 import math
 import socket
 import humanize
@@ -106,7 +107,13 @@ class DownloadFileThread(QThread):
         self.msglen = size
 
     def run(self):
+        self.start_time = time.time()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        bufsize = self.sock.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
+        bufsize *= 1
+        print(bufsize)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF,
+                             int(bufsize))
         self.sock.connect((self.host, self.port))
         s = "DOWNLOAD %s" % (self.file.split("/")[1])
         self.sock.send(str.encode(s))
@@ -119,6 +126,7 @@ class DownloadFileThread(QThread):
             self.stopped = True
             self.canceled = True
             self.sock.close()
+            print("Time elapsed: {0}".format(time.time() - self.start_time))
 
     def download_file(self):
         # chunks = []
@@ -130,7 +138,9 @@ class DownloadFileThread(QThread):
                 with QMutexLocker(self.mutex):
                     if self.stopped:
                         return False
-                chunk = self.sock.recv(min(self.msglen - bytes_recd, 2048))
+                chunk_size = int(1024 * 1)
+                chunk = self.sock.recv(min(self.msglen - bytes_recd,
+                                       chunk_size))
                 if chunk == b'':
                     raise RuntimeError("socket connection broken")
                 # chunks.append(chunk)
