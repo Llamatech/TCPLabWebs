@@ -2,12 +2,14 @@
 
 from __future__ import unicode_literals
 
+import os
 import sys
 import time
 import math
 import socket
 import humanize
 import argparse
+import subprocess
 import os.path as osp
 from qtpy.QtCore import QMutex, QMutexLocker, Qt, QThread, Signal, Slot
 from qtpy.QtWidgets import (QHBoxLayout, QLabel,
@@ -24,6 +26,14 @@ parser.add_argument('--port',
 parser.add_argument('--host',
                     default='127.0.0.1',
                     help="Server hostname")
+
+
+def open_file(filename):
+    if sys.platform == "win32":
+        os.startfile(filename)
+    else:
+        opener = "open" if sys.platform == "darwin" else "xdg-open"
+        subprocess.call([opener, filename])
 
 
 def create_toolbutton(parent, text=None, shortcut=None, icon=None, tip=None,
@@ -46,6 +56,27 @@ def create_toolbutton(parent, text=None, shortcut=None, icon=None, tip=None,
     if shortcut is not None:
         button.setShortcut(shortcut)
     return button
+
+
+class ListLocalFilesThread(QThread):
+    sig_finished = Signal()
+    sig_file_recv = Signal(str, int)
+
+    def __init__(self, parent):
+        QThread.__init__(self, parent)
+        self.mutex = QMutex()
+        self.stopped = None
+
+    def initialize(self, folder):
+        self.folder = folder
+
+    def run(self):
+        for path, dirs, files in os.walk(self.folder):
+            for file in files:
+                file_path = osp.join(path, file)
+                size = os.stat(file_path).st_size
+                self.sig_file_recv.emit(file, size)
+        self.sig_finished.emit()
 
 
 class RecoverFilesThread(QThread):
@@ -273,12 +304,15 @@ class FileDownloaderWidget(QWidget):
         self.selected_file = None
         self.size = 0
         self.files = FileListWidget(self)
+        self.local_files = FileListWidget(self)
         self.download_buttons = DownloadButtons(self)
         self.progress_bar = FileProgressBar(self)
         self.progress_bar.hide()
         self.files.set_title("Server files")
+        self.local_files.set_title("Local files")
         layout = QVBoxLayout()
         layout.addWidget(self.files)
+        layout.addWidget(self.local_files)
         layout.addWidget(self.progress_bar)
         layout.addWidget(self.download_buttons)
         self.setLayout(layout)
@@ -286,6 +320,7 @@ class FileDownloaderWidget(QWidget):
         self.download_buttons.start_sig.connect(self.start_download)
         self.download_buttons.stop_sig.connect(self.stop_and_reset_thread)
         self.files.file_selected_sig.connect(self.set_selected_file)
+        self.local_files.file_selected_sig.connect(self.open_selected_file)
 
     def get_file_list(self):
         self.stop_and_reset_thread()
@@ -305,6 +340,10 @@ class FileDownloaderWidget(QWidget):
         self.size = size
         print((file, size))
         self.progress_bar.set_bounds(0, size)
+
+    def open_selected_file(self, file, size):
+        file_path = osp.abspath(osp.join('downloads', file))
+        open_file(file_path)
 
     def start_download(self):
         if self.selected_file is not None:
@@ -326,6 +365,21 @@ class FileDownloaderWidget(QWidget):
         self.progress_bar.reset_status()
         self.download_buttons.stop.setEnabled(False)
         self.download_buttons.start.setEnabled(True)
+        self.list_local_files()
+
+    def list_local_files(self):
+        self.local_files.clear()
+        self.local_file_thread = ListLocalFilesThread(self)
+        self.local_file_thread.initialize('downloads')
+        self.local_file_thread.sig_file_recv.connect(self.local_files.add_file)
+        self.local_file_thread.sig_finished.connect(self.reset_local_thread)
+        self.local_file_thread.start()
+
+    def reset_local_thread(self):
+        if self.local_file_thread.isRunning():
+            self.local_file_thread.wait()
+        self.local_file_thread.setParent(None)
+        self.local_file_thread = None
 
     def stop_and_reset_thread(self):
         if self.thread is not None:
