@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 from __future__ import unicode_literals
 
@@ -335,12 +335,14 @@ class FileDownloaderWidget(QWidget):
         self.download_buttons.start.setEnabled(False)
         self.progress_bar.show()
 
+    @Slot(str, int)
     def set_selected_file(self, file, size):
         self.selected_file = file
         self.size = size
         print((file, size))
         self.progress_bar.set_bounds(0, size)
 
+    @Slot(str, int)
     def open_selected_file(self, file, size):
         file_path = osp.abspath(osp.join('downloads', file))
         open_file(file_path)
